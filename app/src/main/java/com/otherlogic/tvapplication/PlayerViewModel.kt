@@ -3,6 +3,7 @@ package com.otherlogic.tvapplication
 import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.os.Handler
 import android.os.Looper
 import androidx.lifecycle.AndroidViewModel
@@ -274,8 +275,13 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 val bitmap = downloadBitmap(url)
 
+                val matrix = Matrix().apply { postRotate(270f) }
+                val rotatedBitmap = Bitmap.createBitmap(
+                    bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true
+                )
+
                 handler.post {
-                    ui?.showImage(bitmap)
+                    ui?.showImage(rotatedBitmap)
                 }
 
             } catch (e: Exception) {
