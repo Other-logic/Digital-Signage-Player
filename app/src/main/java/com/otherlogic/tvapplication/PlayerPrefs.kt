@@ -1,3 +1,5 @@
+package com.otherlogic.tvapplication
+
 import android.content.Context
 
 class PlayerPrefs(context: Context) {

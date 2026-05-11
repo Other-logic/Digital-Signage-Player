@@ -1,6 +1,5 @@
-package com.example.signage.player
+package com.otherlogic.tvapplication
 
-import PlayerPrefs
 import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -14,6 +13,7 @@ import org.eclipse.paho.client.mqttv3.IMqttToken
 import org.eclipse.paho.client.mqttv3.MqttCallbackExtended
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttMessage
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -70,10 +70,18 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun connect(brokerUrl: String, deviceId: String) {
+        mqttClient?.let {
+            try {
+                it.disconnect()
+                it.unregisterResources()
+            } catch (e: Exception) {}
+        }
+
         mqttClient = MqttAndroidClient(
             getApplication<Application>().applicationContext,
             brokerUrl,
-            "player_$deviceId"
+            "player_$deviceId",
+            MemoryPersistence()
         )
 
         mqttClient?.setCallback(object : MqttCallbackExtended {
