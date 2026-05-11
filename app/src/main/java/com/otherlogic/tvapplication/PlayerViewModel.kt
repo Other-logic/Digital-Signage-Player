@@ -71,61 +71,65 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun connect(brokerUrl: String, deviceId: String) {
-        mqttClient?.let {
-            try {
-                it.disconnect()
-                it.unregisterResources()
-            } catch (e: Exception) {}
-        }
-
-        mqttClient = MqttAndroidClient(
-            getApplication<Application>().applicationContext,
-            brokerUrl,
-            "player_$deviceId",
-            MemoryPersistence()
-        )
-
-        mqttClient?.setCallback(object : MqttCallbackExtended {
-
-            override fun connectComplete(reconnect: Boolean, serverURI: String?) {
-                try {
-                    mqttClient?.subscribe("signage/all", 1)
-                    mqttClient?.subscribe("signage/device/$deviceId", 1)
-
-                    handler.post {
-                        ui?.showMessage("Connected")
-                        prefs.saveSettings(brokerUrl, deviceId)
-                        ui?.showPlayer(deviceId)
-                    }
-                } catch (e: Exception) {
-                    handler.post {
-                        ui?.showMessage("Subscribe error: ${e.message}")
-                    }
-                }
-            }
-
-            override fun connectionLost(cause: Throwable?) {
-                handler.post {
-                    ui?.showMessage("Disconnected: ${cause?.message ?: "unknown"}")
-                }
-            }
-
-            override fun messageArrived(topic: String?, message: MqttMessage?) {
-                val payload = message?.toString() ?: return
-                handleCommand(payload)
-            }
-
-            override fun deliveryComplete(token: IMqttDeliveryToken?) {}
-        })
-
-        val options = MqttConnectOptions().apply {
-            isCleanSession = true
-            isAutomaticReconnect = true
-            keepAliveInterval = 20
-            connectionTimeout = 10
-        }
-
         try {
+            // Properly cleanup existing client
+            mqttClient?.let { oldClient ->
+                try {
+                    oldClient.unregisterResources()
+                } catch (t: Throwable) {
+                    // Ignore cleanup errors
+                }
+                mqttClient = null
+            }
+
+            val context = getApplication<Application>()
+            
+            mqttClient = MqttAndroidClient(
+                context,
+                brokerUrl,
+                "player_$deviceId",
+                MemoryPersistence()
+            )
+
+            mqttClient?.setCallback(object : MqttCallbackExtended {
+                override fun connectComplete(reconnect: Boolean, serverURI: String?) {
+                    try {
+                        mqttClient?.subscribe("signage/all", 1)
+                        mqttClient?.subscribe("signage/device/$deviceId", 1)
+
+                        handler.post {
+                            ui?.showMessage("Connected")
+                            prefs.saveSettings(brokerUrl, deviceId)
+                            ui?.showPlayer(deviceId)
+                        }
+                    } catch (e: Exception) {
+                        handler.post {
+                            ui?.showMessage("Subscribe error: ${e.message}")
+                        }
+                    }
+                }
+
+                override fun connectionLost(cause: Throwable?) {
+                    handler.post {
+                        ui?.showMessage("Disconnected: ${cause?.message ?: "unknown"}")
+                    }
+                }
+
+                override fun messageArrived(topic: String?, message: MqttMessage?) {
+                    val payload = message?.toString() ?: return
+                    handleCommand(payload)
+                }
+
+                override fun deliveryComplete(token: IMqttDeliveryToken?) {}
+            })
+
+            val options = MqttConnectOptions().apply {
+                isCleanSession = true
+                isAutomaticReconnect = true
+                keepAliveInterval = 20
+                connectionTimeout = 10
+            }
+
             // Add a timeout handler for connection
             val connectionTimeoutRunnable = Runnable {
                 if (mqttClient?.isConnected != true) {
@@ -139,37 +143,31 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             mqttClient?.connect(options, null, object : IMqttActionListener {
                 override fun onSuccess(asyncActionToken: IMqttToken?) {
                     handler.removeCallbacks(connectionTimeoutRunnable)
-                    // Success is already handled in connectComplete
                 }
 
                 override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
                     handler.removeCallbacks(connectionTimeoutRunnable)
 
                     handler.post {
-                        val mqttException =
-                            exception as? org.eclipse.paho.client.mqttv3.MqttException
-
+                        val mqttException = exception as? org.eclipse.paho.client.mqttv3.MqttException
                         val reasonCode = mqttException?.reasonCode
-                        val causeMessage = exception?.cause?.message
-                        val exceptionMessage = exception?.message
+                        val causeMessage = exception?.cause?.message ?: exception?.cause?.toString() ?: "No cause"
+                        val exceptionMessage = exception?.message ?: exception?.toString() ?: "No message"
 
-                        val errorMsg = """
-            Connection failed
-            Type: ${exception?.javaClass?.simpleName}
-            ReasonCode: $reasonCode
-            Message: $exceptionMessage
-            Cause: $causeMessage
-            Broker: $brokerUrl
-        """.trimIndent()
+                        val errorMsg = "Connection failed\n" +
+                                "Type: ${exception?.javaClass?.simpleName}\n" +
+                                "Reason: $reasonCode\n" +
+                                "Msg: $exceptionMessage\n" +
+                                "Cause: $causeMessage"
 
                         ui?.showMessage(errorMsg)
                     }
                 }
             })
-        } catch (e: Exception) {
-            handler.post {
-                ui?.showMessage("MQTT connect error: ${e.message}")
-            }
+        } catch (t: Throwable) {
+            val error = "Init Error: ${t.javaClass.simpleName}\n${t.message}"
+            ui?.showMessage(error)
+            t.printStackTrace()
         }
     }
 
