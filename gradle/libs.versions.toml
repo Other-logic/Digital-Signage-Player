@@ -10,8 +10,9 @@ localbroadcastmanager = "1.0.0"
 material = "1.11.0"
 activityKtx = "1.8.2"
 constraintlayout = "2.1.4"
-orgEclipsePahoClientMqttv3 = "1.2.5"
+orgEclipsePahoClientMqttv3 = "1.2.0"
 orgEclipsePahoAndroidService = "1.1.1"
+multidex = "2.0.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -26,6 +27,7 @@ androidx-activity-ktx = { group = "androidx.activity", name = "activity-ktx", ve
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 org-eclipse-paho-android-service = { module = "org.eclipse.paho:org.eclipse.paho.android.service", version.ref = "orgEclipsePahoAndroidService" }
 org-eclipse-paho-client-mqttv3 = { module = "org.eclipse.paho:org.eclipse.paho.client.mqttv3", version.ref = "orgEclipsePahoClientMqttv3" }
+androidx-multidex = { module = "androidx.multidex:multidex", version.ref = "multidex" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
